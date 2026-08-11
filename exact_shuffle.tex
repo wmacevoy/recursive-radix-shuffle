@@ -1,0 +1,271 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,url}
+\usepackage[hidelinks]{hyperref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\title{An Exact Manual Shuffle}
+\author{Warren MacEvoy\thanks{Procedure and layout by W.~MacEvoy;
+analysis, simulations, and drafting assistance by Claude (Anthropic).}}
+\date{August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We give a procedure for shuffling a deck of cards by hand, directed by a
+die or coins, whose output is \emph{exactly} uniformly distributed over
+all $n!$ orderings---not approximately, not asymptotically, but with
+zero error in every metric, conditional only on fair independent draws
+and one discipline: piles are collected in an order fixed in advance.
+The procedure is a single repeating structure that fits on a card table:
+deal the deck into a row of bins; collect the bins in predetermined
+order; any bin holding more than one card is dealt into the next row
+first, by the same rule. It requires no skill, no counting, never shows
+a card face, terminates almost surely in a few rows, and a bystander
+who observes everything but the card faces---including the random
+running time---learns nothing about the result. Run on a computer, the
+same rule turns a bare fair-bit generator into an exactly uniform
+permutation with output-independent timing. A 52-card deck costs about $121$ card placements using a die and a
+coin in a twelve-slot box lid; a purpose-built 36-bin stand with
+single-roll resolution of two- and three-card piles reduces this to
+about $73$ throws and $55$ placements, with most runs never recursing
+at all. The procedure physically realizes the strong uniform time of
+Aldous and Diaconis; the proof is a paragraph.
+\end{abstract}
+
+\section{The procedure}
+
+Fix a radix $d$ and a randomizer providing independent uniform draws
+from $\{1,\dots,d\}$ per card:
+\begin{center}
+\begin{tabular}{lll}
+$d=6$: & one die & (six bins) \\
+$d=8$: & three coins read as binary & (eight bins) \\
+$d=12$: & one die and one coin & (twelve bins) \\
+\end{tabular}
+\end{center}
+
+Lay out one \emph{row} of $d$ bin positions, numbered by draw value. The procedure is one rule, applied recursively:
+
+\begin{quote}
+\textbf{To shuffle a pile:} deal its cards one at a time, each to the
+bin its draw names, all face down. Then collect the bins in a fixed,
+predetermined order (say right to left): an empty bin contributes
+nothing; a bin holding one card goes onto the output; a bin holding two
+or more cards is first shuffled by this same rule, dealt into the next
+row below, and its result then goes onto the output.
+\end{quote}
+
+Shuffling the deck means applying the rule to the whole deck in
+row~one. Each level of recursion is a fresh row of the same $d$ bins,
+so the table layout is a small stack of identical rows used top to
+bottom; a pair of cards that keeps colliding simply walks one more row
+down, and separates there with probability $1 - 1/d$. Seven rows
+suffice outside a fraction $\binom{n}{2}/d^{6}$ of runs (about $3\%$
+for a 52-card deck at $d=6$, $0.04\%$ at $d=12$); when the rare deeper
+collision occurs, reuse a cleared row.
+
+\section{The theorem}
+
+\begin{theorem}
+Suppose every draw is independent and uniform on $\{1,\dots,d\}$, and
+every collection order is fixed before the corresponding deal. Then the
+output of the procedure is exactly uniformly distributed on the $n!$
+orderings of the deck. Moreover it is exactly uniform conditional on the
+entire observable transcript---every bin size in every row---so an
+observer who sees everything except card faces learns nothing about the
+result.
+\end{theorem}
+
+\begin{proof}
+Induction on the pile size $n$; sizes $0$ and $1$ are trivial. Condition
+on the size vector $(b_1,\dots,b_d)$ of the top-level deal. Given sizes,
+the \emph{sets} of cards in the bins are uniform over all partitions
+with those sizes, because the draws are i.i.d.\ uniform; and each bin's
+internal order is uniform by the induction hypothesis, independently
+across bins. Concatenating in any order fixed independently of the
+draws therefore yields a uniformly random ordering of the pile,
+conditional on the size vector. Since this holds for every size vector,
+it holds unconditionally; and applying the same argument at every level
+of the recursion gives uniformity conditional on the full size
+transcript. Termination is almost sure: any two cards still sharing a
+bin separate at the next row with probability $1 - 1/d$.
+\end{proof}
+
+\begin{corollary}
+The output permutation is statistically independent of the running
+time and of every function of the size transcript: duration, number of
+placements, number of re-deals, and rows reached may be disclosed
+without any loss of key material. (Uniform conditional on every
+transcript value means the joint law factors.) The independence does
+not extend to the draw values themselves: an observer of which card
+went to which bin reconstructs the permutation entirely, which is why
+observation of the draws equals compromise.
+\end{corollary}
+
+Equivalently, the procedure sorts the cards by infinite random $d$-ary
+strings---by random reals---revealing only as many digits as needed to
+break ties; and it is a physical realization of the strong uniform time
+of Aldous and Diaconis~\cite{AD86} for riffle-type shuffles: deal by
+random digits until all cards' strings are distinct, at which instant
+the deck is exactly uniform. Truncating the recursion at a fixed number
+of rows, ties broken by deal order, recovers the classical
+riffle-shuffle family of Bayer and Diaconis~\cite{BD92} with its small
+but nonzero deficits; running the recursion to completion removes the
+deficit entirely, which is why no distance tables, entropy accounting,
+or pass-count rules appear in this paper. Zero requires no
+bookkeeping.
+
+\section{The one discipline}
+
+The hypothesis that collection order is fixed \emph{before} the deal is
+load-bearing, and the natural human behavior violates it: pile sizes are
+visible, and a tidy operator reaches for the largest pile first. This
+biases the result. Already at $n = 3$ cards and $d = 2$, fixed
+collection realizes five of the six permutations while
+largest-pile-first realizes only three, with total-variation error
+$1/2$; the output would always begin with its longest run of
+previously-adjacent cards. Independence from the draws is the true
+requirement, and predetermination---the same order every row, agreed
+before the first roll---is its enforceable form. In multi-party use this
+is a security requirement, not hygiene: whoever collects the piles
+otherwise holds a channel for biasing the deck while appearing merely
+tidy.
+
+\paragraph{Computational form.}
+Although stated as a manual scheme, the rule is directly a computer
+algorithm, and at $d = 2$ it needs nothing but a fair-bit generator:
+stably partition the array by one fresh random bit per element, recurse
+on every block of two or more, concatenate. The output is exactly
+uniform by the theorem---no modular reduction, no range-rejection loop,
+no floating point---and by the corollary its running time is provably
+independent of the output, a timing-side-channel guarantee that
+implementations of Fisher--Yates must argue for separately. The
+expected cost is $n\log_2 n + O(n)$ bits (simulated: $365$ bits at
+$n = 52$, $266$ at $n = 40$, against the entropy lower bound
+$\log_2 n!$ of $226$ and $159$; overhead factor about $1.6$). The
+computational trick itself is folklore---sorting by lazily generated
+random reals---but it inherits, unchanged, the exactness proof and the
+transcript-independence corollary above.
+
+\section{Multi-party use}
+
+When $N$ parties require a deck none can bias, each rolls its own
+randomizer for every card and the bin is the sum modulo $d$ of the
+parties' draws (per die; for coins, the XOR of flips). The combined draw
+is exactly uniform provided at least one party draws fairly and
+independently, so a dishonest coalition of $N-1$ loaded-dice players
+gains nothing. Draws for a card are thrown together or pre-committed, so
+loaded hardware cannot adapt to honest outcomes; collection needs no
+trust, being predetermined and observable; and by the theorem the
+procedure may be---should be---conducted with every entitled party
+watching everything.
+
+\section{The apparatus}
+
+The radix need not be constant across levels---the theorem's hypotheses
+are per-level---and small piles need not recurse at all when their
+symmetric group can be sampled directly. Both freedoms condense the
+procedure into a purpose-built stand, cuttable on a laser cutter:
+\textbf{36 labeled bins} tipped at $60^\circ$ for the first deal
+(addressed by two dice, row and column); \textbf{two rows of six
+bins} at the right for recursion (one die); and, along the bottom,
+\textbf{an action table} for the die faces:
+$1,\ 1\mathrm{X},\ 2,\ 2\mathrm{X},\ 3,\ 3\mathrm{X}$.
+
+The operator deals the deck into the 36 bins, then sweeps them in the
+stand's manufactured order. A bin of one card goes to the output. Small piles resolve by one roll against the
+action table, which labels permutations by \emph{actions} rather than
+patterns: the digit names which card (1 = top) moves to the back, and X
+says whether to exchange the remaining pair. For a three-card bin this
+factors $S_3$ as $3 \times 2 = 6$, one action per die face, exact; for
+a two-card bin only the X matters---even faces exchange---exact, three
+faces each way. There is no permutation decoding, only two motions:
+pull a card to the back, swap or don't. A bin of four resolves in three throws,
+deterministically, because $4$ divides $36$: the two dice name a cell,
+and each cell of the stand carries a small corner numeral---its index
+mod~$4$---so the rig does the arithmetic; the numeral picks the first
+card of the pile (exactly uniform, nine cells per residue), and one
+further die applies a three-card pattern to the rest. Only a bin of
+five or more cards (about one per two 52-card shuffles) is dealt into a
+six-bin row and resolved the same way; two rows are ample (cleared rows
+are reused), and a majority of 52-card runs never leave the first level
+at all. The whole shuffle is thus, in expectation, one deal of the deck
+plus roughly a dozen and a half single-roll fix-ups.
+
+Two remarks. First, the stand \emph{manufactures the discipline} of
+Section~3: the collection order and the permutation table are cut and
+labeled into the artifact, so the theorem's one behavioral hypothesis
+is enforced by geometry rather than operator virtue---for a
+key-generation apparatus, a property worth having. Second, the
+action labels exist for the same reason: pattern strings (``201'' vs.\
+``210'') invite systematic misreads, and a systematic misread skews the
+six-way distribution; ``move card~2 to the back, exchange'' does not.
+What reading error remains is value-independent noise---the operator
+sees no faces. A humbler rig
+bootstraps the same procedure from four identical slotted shoebox
+lids: three tiled side by side form the 36-bin field (two dice: column
+and row), and the fourth carries the two recursion rows and the printed
+enumeration. A one-page cut template (print four copies at full scale)
+accompanies the paper; a single such lid, addressed by a die and a
+coin, is by itself the twelve-slot rig of the cost table.
+
+\section{Cost}
+
+Simulated (placements equal draws for the plain recursion; the stand
+and shoebox rows count randomizer throws, their single-roll fix-ups
+included; ``rows'' is the recursion depth reached):
+
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{placements} & \multicolumn{2}{c}{rows} \\
+ & mean & 95th pct. & mean & 95th pct. \\
+\midrule
+$n=52$, $d=6$ (die)          & $157$ & $168$ & $4.8$ & $6$ \\
+$n=52$, $d=8$ (coins)        & $138$ & $148$ & $4.3$ & $5$ \\
+$n=52$, $d=12$ (die$+$coin)  & $121$ & $129$ & $3.6$ & $5$ \\
+$n=52$, shoebox (12 slots, 2/3-fix) & $105$ & $110$ & $2.8$ & $3$ \\
+$n=52$, stand (36, $d6$ rows, 4-fix) & $73$  & $79$  & $1.5$ & $2$ \\
+$n=40$, $d=12$               & $89$  & $96$  & $3.4$ & $4$ \\
+$n=40$, stand                & $53$  & $58$  & $1.2$ & $2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The recursion re-deals only collisions, never the whole deck, so the
+work concentrates tightly around its mean; on the stand, the level-one
+deal (52 throws, 52 placements) is in expectation nearly the entire
+shuffle---expected placements total $55$, and a majority of runs never
+recurse. For comparison, achieving
+merely $10^{-3}$ total-variation error with fixed full-deck passes costs
+$156$ placements at $n = 52$; the exact procedure with die-and-coin
+costs less and errs by nothing.
+
+\section{Cautions}
+
+The randomizers are the entire entropy source; the theorem is
+conditional on fair, independent draws---use quality dice or the
+multi-party rule. A misdealt card (wrong bin) is harmless
+outcome-independent noise, but a collection order improvised after
+seeing the piles is not (Section~3). Anyone who observes the draws can
+reconstruct the deck: for a secret key, admit exactly the parties
+entitled to it, and never reuse a recorded sequence. Simulation code
+reproducing the cost table and an empirical uniformity check accompanies
+the paper (\texttt{verify\_shuffle.py}, commands \texttt{recursive} and \texttt{stand}).
+
+\begin{thebibliography}{9}
+\bibitem{AD86} D.~Aldous and P.~Diaconis,
+``Shuffling cards and stopping times,''
+\emph{American Mathematical Monthly} \textbf{93} (1986), 333--348.
+\bibitem{BD92} D.~Bayer and P.~Diaconis,
+``Trailing the dovetail shuffle to its lair,''
+\emph{Annals of Applied Probability} \textbf{2} (1992), 294--313.
+\bibitem{Schneier99} B.~Schneier,
+``The Solitaire encryption algorithm,'' 1999,
+\url{https://www.schneier.com/academic/solitaire/}.
+\end{thebibliography}
+
+\end{document}
